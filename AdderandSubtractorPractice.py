@@ -3,6 +3,7 @@ from keras.layers import *
 from keras.utils import np_utils
 from sklearn.preprocessing import LabelEncoder
 from keras.optimizers import RMSprop
+from keras.layers import Input, LSTM, Dense, RNN
 import random
 # onehot 編碼
 onehot_label = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "+", "-", " "]
@@ -68,21 +69,33 @@ def generalmin():
     trainData = np.load("dataset/trainData.npy")
     trainTarget = np.load("dataset/trainTarget.npy")
 
-    # z = list(zip(trainData, trainTarget))
-    # random.shuffle(z)
-    # trainData[:], trainTarget[:] = zip(*z)
-    # print(len(trainData))
-    # trainData = trainData[0:250000]
-    # trainTarget = trainTarget[0:250000]
-    # print(len(trainData))
-    # testData = trainData[150000:250000]
-    # testTarget = trainTarget[150000:250000]
-    # print(len(trainData[150000:250000]))
+
     np.save("dataset/trainData_min.npy", trainData[0:250000])
     np.save("dataset/trainTarget_min.npy", trainTarget[0:250000])
-    #
-    # np.save("dataset/testData_.npy", testData)
-    # np.save("dataset/testTarget_.npy", testTarget)
+
+def denseLayer():
+    # model
+    rmsprop = RMSprop(lr=0.01, rho=0.9, epsilon=1e-08, decay=0.0)
+
+    input = Input(shape=(7, 13))
+    x = Flatten()(input)
+    x = Dense(256, activation='relu')(x)  # 4x13 = 52
+    x = Dense(52, activation='relu')(x)  # 4x13 = 52
+    x = Reshape((4, 13))(x)
+    x = Activation('softmax')(x)
+
+    model = Model(inputs=input, outputs=x)
+    # model.compile(optimizer='sgd', loss='mse')
+    model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    print(model.summary())
+    model.fit(trainData, trainTarget,
+              epochs=100,
+              batch_size=100,
+              shuffle=True,
+              validation_data=(testData, testTarget),
+              verbose = 2,
+              )
+
 
 # 資料前處理
 # generate_trainingData()
@@ -103,36 +116,24 @@ trainData = trainData[0:80000]
 trainTarget = trainTarget[0:80000]
 
 # 拿60000test data
-testData = trainData[0:60000]
-testTarget = testTarget[0:60000]
+testData = trainData[0:20000]
+testTarget = testTarget[0:20000]
 
-
-# model
-rmsprop = RMSprop(lr=0.01, rho=0.9, epsilon=1e-08, decay=0.0)
 
 input = Input(shape=(7, 13))
-x = Flatten()(input)
-
-x = Dense(64, activation='relu')(x)
-
+x = LSTM(256, activation='relu')(input)  # 4x13 = 52
 x = Dense(52, activation='relu')(x)  # 4x13 = 52
 x = Reshape((4, 13))(x)
 x = Activation('softmax')(x)
-model = Model(inputs=input, outputs=x)
 
+model = Model(inputs=input, outputs=x)
 # model.compile(optimizer='sgd', loss='mse')
 model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-
 print(model.summary())
-
 model.fit(trainData, trainTarget,
           epochs=100,
-          batch_size=800000,
+          batch_size=100,
           shuffle=True,
           validation_data=(testData, testTarget),
-          verbose = 1,
+          verbose = 2,
           )
-
-model.save('my_model.h5')
-
-# # decoder(data_onehot)
